@@ -225,25 +225,33 @@ import random
 rng = random.Random(0)
 
 training_data_ = list(zip(linear_training_data, expected_outputs,))
-rng.shuffle(training_data_)
 
-print(f"n_images: {N}")
-for i in range(N // batch_size):
-    if i % 100 == 0:
-        print(f"{(i+1) * batch_size} / {N}")
-    train(
-        model, training_data_[i * batch_size : (i + 1) * batch_size],
+sample = training_data_[:100]
+
+
+def nn_answer(model: Model, input_: np.ndarray) -> int:
+    activations_and_zs = apply_model(input_, model)
+
+    return np.argmax(activations_and_zs[-1][0])
+
+
+for epoch in range(15):
+    n_correct = sum(
+        nn_answer(model, input_) == np.argmax(expected_output)
+        for input_, expected_output in sample
     )
 
-    # if i * batch_size % 500 == 0:
-    #    show_result(model, *training_data_[2])
+    percentage_correct = round(n_correct / len(sample) * 100, 1)
+    print(f"{n_correct}/{len(sample)} correct ({percentage_correct})")
 
-    # train(
-    #     model, list(zip(linear_training_data[2:5], expected_outputs[2:5],)),
-    # )
+    rng.shuffle(training_data_)
 
+    print(f"n_images: {N}")
+    for i in range(N // batch_size):
+        if (i + 1) % 1000 == 0:
+            print(f"{(i+1) * batch_size} / {N}")
+        train(
+            model, training_data_[i * batch_size : (i + 1) * batch_size],
+        )
 
-show_result(model, *training_data_[2])
-
-
-# for input_, expected_output in zip(training_data, training_labels):
+    print(f"\nepoch {epoch}:")
