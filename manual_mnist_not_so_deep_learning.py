@@ -62,6 +62,7 @@ training_labels = read_mnist_label_file("MNIST/train-labels-idx1-ubyte.gz")
 
 
 def sigmoid(x):
+    x = np.clip(x, -500, 500)
     return 1 / (1 + np.exp(-x))
 
 
