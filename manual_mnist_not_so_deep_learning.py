@@ -188,12 +188,12 @@ def div_model(model: Model, divisor: float):
 
 linear_training_data = training_data.reshape(n_images, n_rows * n_cols)
 
-from numpy.random import random_sample
+from numpy.random import randn
 
 model = [
-    (random_sample((16, n_rows * n_cols)) / (n_rows * n_cols), random_sample(16)),
-    # (random_sample((16, 16)) / 16, random_sample(16)),
-    (random_sample((10, 16)) / 16, random_sample(10)),
+    (randn(16, n_rows * n_cols), randn(16)),
+    (randn(16, 16), randn(16)),
+    (randn(10, 16), randn(10)),
 ]
 
 neuron_outputs_and_zs = apply_model(linear_training_data[2], model)
