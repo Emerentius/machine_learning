@@ -66,8 +66,12 @@ def sigmoid(x):
 
 
 def sigmoid_derivative(x):
-    neg_exp = np.exp(-x)
-    return neg_exp / (1 + neg_exp) ** 2
+    # correct, but less numerically stable
+    # neg_exp = np.exp(-x)
+    # return neg_exp / (1 + neg_exp) ** 2
+
+    s = sigmoid(x)
+    return (1 - s) * s
 
 
 def apply_model(
