@@ -134,11 +134,7 @@ def backpropagate(
         # assert False
 
         # weights
-        layer_changes = model_changes[layer_idx]
-        weights_changes = layer_changes[0]
-        for idx, _ in np.ndenumerate(weights_changes):
-            row, col = idx
-            weights_changes[idx] = -delta[row] * previous_layer_output[col]
+        weights_changes = -delta.reshape(-1, 1) @ previous_layer_output.reshape(-1, 1).T
 
         # biases
         # have to overwrite tuple in list because tuples are "immutable"
