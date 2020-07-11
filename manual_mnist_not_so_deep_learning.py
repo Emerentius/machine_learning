@@ -206,11 +206,18 @@ def label_to_array(label: int) -> np.ndarray:
     return a
 
 
+def show_result(model, input_, expected_output):
+    neuron_outputs_and_zs = apply_model(input_, model)
+    output, _ = neuron_outputs_and_zs[-1]
+    print(output)
+    print(expected_output)
+
+
 expected_outputs = [label_to_array(label) for label in training_labels]
 # train(model, list(zip(linear_training_data[:20], expected_outputs[:20])))
 
 batch_size = 10
-N = min(200, len(linear_training_data))
+N = len(linear_training_data)
 
 import random
 
@@ -221,20 +228,18 @@ rng.shuffle(training_data_)
 
 print(f"n_images: {N}")
 for i in range(N // batch_size):
-    print(f"{(i+1) * batch_size} / {N}")
+    if i % 100 == 0:
+        print(f"{(i+1) * batch_size} / {N}")
     train(
         model, training_data_[i * batch_size : (i + 1) * batch_size],
     )
+
+    # if i * batch_size % 500 == 0:
+    #    show_result(model, *training_data_[2])
+
     # train(
     #     model, list(zip(linear_training_data[2:5], expected_outputs[2:5],)),
     # )
-
-
-def show_result(model, input_, expected_output):
-    neuron_outputs_and_zs = apply_model(input_, model)
-    output, _ = neuron_outputs_and_zs[-1]
-    print(output)
-    print(expected_output)
 
 
 show_result(model, *training_data_[2])
