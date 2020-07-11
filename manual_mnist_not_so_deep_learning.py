@@ -161,7 +161,7 @@ def train(model: Model, input_batch: List[Tuple[np.ndarray, np.ndarray]]):
         add_model_changes(accumulated_model_changes, model_changes)
 
     # add average changes onto model
-    learning_rate = 20
+    learning_rate = 0.1
     div_model(accumulated_model_changes, n / learning_rate)
     # print("changes")
     # print(accumulated_model_changes)
