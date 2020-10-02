@@ -1,11 +1,13 @@
 [tool.poetry]
-name = "machine learning"
+name = "machine_learning"
 version = "0.1.0"
 description = ""
 authors = ["Emerentius <emerentius@arcor.de>"]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.8"
+jupyter = "^1.0.0"
+torch = "^1.6.0"
 
 [tool.poetry.dev-dependencies]
 
