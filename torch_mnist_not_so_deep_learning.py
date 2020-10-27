@@ -1,16 +1,17 @@
 import numpy as np
 import gzip
+import torch
 from typing import List, Tuple, Any
 
-LayerWeights = Any  # np.ndarray
-LayerBiases = Any  # np.ndarray
+LayerWeights = Any  # torch.Tensor
+LayerBiases = Any  # torch.Tensor
 Model = List[Tuple[LayerWeights, LayerBiases]]
 
 # ==================================================
 # Original MNIST reading code taken from https://stackoverflow.com/a/53570674.
 # Then adapted with less hardcoded values.
 # ==================================================
-def read_mnist_image_file(path: str) -> np.ndarray:
+def read_mnist_image_file(path: str) -> torch.Tensor:
     with gzip.open(path, "rb") as f:
         header = f.read(16)
         # first 4 bytes are to check endianness of 32-bit
@@ -24,13 +25,21 @@ def read_mnist_image_file(path: str) -> np.ndarray:
         # np.fromfile doesn't work with gzip as it doesn't return a real file object
         # (one with a file descriptor)
         # data = np.fromfile(f, dtype=np.uint8) / 256
+        # TODO: how the heck can you just construct a torch tensor from bytes
+        #       without a numpy array.
+        #       And get rid of all this copying.
         buf = f.read()
-        data = np.frombuffer(buf, dtype=np.uint8)
+        # array must be writeable for torch, so copy it.
+        data = np.frombuffer(
+            buf,
+            dtype=np.uint8,
+        ).copy()
+        data: torch.Tensor = torch.from_numpy(data).float()
 
-        return data.reshape(n_images, n_rows, n_columns)
+        return data.view(n_images, n_rows, n_columns)
 
 
-def read_mnist_label_file(path: str) -> np.ndarray:
+def read_mnist_label_file(path: str) -> torch.Tensor:
     with gzip.open(path, "rb") as f:
         # 8-byte header contains magic number for endianness check
         # and number of labels.
@@ -38,12 +47,12 @@ def read_mnist_label_file(path: str) -> np.ndarray:
         _header = f.read(8)
         n_labels = int.from_bytes(_header[4:8], "big")
 
-        # data: np.ndarray = np.fromfile(f, dtype=np.uint8)
+        # data: torch.Tensor = np.fromfile(f, dtype=np.uint8)
         buf = f.read()
         data = np.frombuffer(buf, dtype=np.uint8)
 
         assert data.size == n_labels
-        return data
+        return torch.from_numpy(data)
 
 
 training_data = read_mnist_image_file("MNIST/train-images-idx3-ubyte.gz")
@@ -62,8 +71,8 @@ training_labels = read_mnist_label_file("MNIST/train-labels-idx1-ubyte.gz")
 
 
 def sigmoid(x):
-    x = np.clip(x, -500, 500)
-    return 1 / (1 + np.exp(-x))
+    x = x.clamp(-500, 500)
+    return 1 / (1 + torch.exp(-x))
 
 
 def sigmoid_derivative(x):
@@ -76,11 +85,13 @@ def sigmoid_derivative(x):
 
 
 def apply_model(
-    input_: np.ndarray, model: List[Tuple[np.ndarray, np.ndarray]]
-) -> List[Tuple[np.ndarray, np.ndarray]]:
+    input_: torch.Tensor, model: List[Tuple[torch.Tensor, torch.Tensor]]
+) -> List[Tuple[torch.Tensor, torch.Tensor]]:
     """Returns result of last layer as well as z for all neuron layers"""
     # input is 28x28 array
     last_layer = input_
+
+    assert input_.dtype == torch.float
 
     neuron_outputs_and_z = [(input_, None)]
     for weights, bias in model:
@@ -102,17 +113,17 @@ def cost_derivative(output, expected_output):
 
 def backpropagate(
     model: Model,
-    weights_transposes: List[np.ndarray],
-    input: np.ndarray,
-    # output: np.ndarray,
-    expected_output: np.ndarray,
-    neuron_outputs_and_z: List[Tuple[np.ndarray, np.ndarray]],
-) -> List[Tuple[np.ndarray, np.ndarray]]:
+    weights_transposes: List[torch.Tensor],
+    input: torch.Tensor,
+    # output: torch.Tensor,
+    expected_output: torch.Tensor,
+    neuron_outputs_and_z: List[Tuple[torch.Tensor, torch.Tensor]],
+) -> List[Tuple[torch.Tensor, torch.Tensor]]:
     """Returns desired changes for given input"""
 
     # # cost_ = cost(output, expected_output)
     # delta = cost_derivative(output, expected_output) * sigmoid_derivative(zs[-1])
-    model_changes = [(np.zeros(w.shape), np.zeros(b.shape)) for w, b in model]
+    model_changes = [(torch.zeros(w.shape), torch.zeros(b.shape)) for w, b in model]
 
     # # grad_b
     # model_changes[-1][1] = delta
@@ -139,7 +150,7 @@ def backpropagate(
         # assert False
 
         # weights
-        weights_changes = -delta.reshape(-1, 1) @ previous_layer_output.reshape(-1, 1).T
+        weights_changes = -delta.view(-1, 1) @ previous_layer_output.view(-1, 1).T
 
         # biases
         # have to overwrite tuple in list because tuples are "immutable"
@@ -148,11 +159,11 @@ def backpropagate(
     return model_changes
 
 
-def train(model: Model, input_batch: List[Tuple[np.ndarray, np.ndarray]]):
+def train(model: Model, input_batch: List[Tuple[torch.Tensor, torch.Tensor]]):
 
     n = len(input_batch)
     accumulated_model_changes = [
-        (np.zeros(w.shape), np.zeros(b.shape)) for w, b in model
+        (torch.zeros(w.shape), torch.zeros(b.shape)) for w, b in model
     ]
 
     for input_, expected_output in input_batch:
@@ -187,9 +198,9 @@ def div_model(model: Model, divisor: float):
 
 # ==================================================
 
-linear_training_data = training_data.reshape(n_images, n_rows * n_cols)
+linear_training_data = training_data.view(n_images, n_rows * n_cols)
 
-from numpy.random import randn
+from torch import randn
 
 model = [
     (randn(16, n_rows * n_cols), randn(16)),
@@ -201,8 +212,8 @@ neuron_outputs_and_zs = apply_model(linear_training_data[2], model)
 print(neuron_outputs_and_zs[-1])
 
 
-def label_to_array(label: int) -> np.ndarray:
-    a = np.zeros(10)
+def label_to_array(label: int) -> torch.Tensor:
+    a = torch.zeros(10)
     a[label] = 1.0
     return a
 
@@ -229,15 +240,15 @@ training_data_ = list(zip(linear_training_data, expected_outputs,))
 sample = training_data_[:100]
 
 
-def nn_answer(model: Model, input_: np.ndarray) -> int:
+def nn_answer(model: Model, input_: torch.Tensor) -> int:
     activations_and_zs = apply_model(input_, model)
 
-    return np.argmax(activations_and_zs[-1][0])
+    return torch.argmax(activations_and_zs[-1][0])
 
 
 for epoch in range(15):
     n_correct = sum(
-        nn_answer(model, input_) == np.argmax(expected_output)
+        (nn_answer(model, input_) == torch.argmax(expected_output)).item()
         for input_, expected_output in sample
     )
 
