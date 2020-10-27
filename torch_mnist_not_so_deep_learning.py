@@ -235,7 +235,12 @@ import random
 
 rng = random.Random(0)
 
-training_data_ = list(zip(linear_training_data, expected_outputs,))
+training_data_ = list(
+    zip(
+        linear_training_data,
+        expected_outputs,
+    )
+)
 
 sample = training_data_[:100]
 
@@ -262,7 +267,8 @@ for epoch in range(15):
         if (i + 1) % 1000 == 0:
             print(f"{(i+1) * batch_size} / {N}")
         train(
-            model, training_data_[i * batch_size : (i + 1) * batch_size],
+            model,
+            training_data_[i * batch_size : (i + 1) * batch_size],
         )
 
     print(f"\nepoch {epoch}:")
